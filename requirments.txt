@@ -1,0 +1,5 @@
+watchdog==4.0.1
+watchfiles==0.22.0
+pandas==2.0.3
+gradio==4.31.5
+gradio_client==0.16.4
