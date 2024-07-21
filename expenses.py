@@ -37,7 +37,7 @@ def add_label(dataframe, search_results, label):
                (dataframe['Price'] == row['Price']) & \
                (dataframe['Sheet Name'] == row['Sheet Name'])
         dataframe.loc[mask, 'Label'] = label
-    
+
     return dataframe, f"Added label '{label}' to {len(search_results)} items."
 
 
@@ -81,7 +81,7 @@ def gradio_app():
                 search_input = gr.Textbox(label="Search Term")
                 result_table = gr.DataFrame(
                     label="Search Results", 
-                    interactive=False
+                    interactive=True
                 )
                 with gr.Row():
                     total_output = gr.Textbox(label="Total")
