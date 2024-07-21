@@ -1,6 +1,5 @@
 import gradio as gr
 import pandas as pd
-import numpy as np
 import os
 
 
@@ -9,7 +8,8 @@ def load_excel_files(file_objects):
     for file in file_objects:
         df = pd.read_excel(file.name)
         df['Sheet Name'] = os.path.basename(file.name)
-        dfs.append(df[['Description', 'Price', 'Sheet Name']])
+        df['Label'] = ''  # Initialize Label column with empty strings
+        dfs.append(df[['Description', 'Price', 'Sheet Name', 'Label']])
     combined_df = pd.concat(dfs, ignore_index=True)
     total_price = combined_df['Price'].sum()
     return combined_df, combined_df, f"Total Price: ${total_price:.2f}"
@@ -25,7 +25,7 @@ def search_data(dataframe, search_term):
     summary = f"Total: ${total:.2f}"
     
     return filtered_df, summary
-    
+
 
 def add_label(dataframe, search_results, label):
     if dataframe is None or dataframe.empty or search_results is None or search_results.empty:
@@ -44,21 +44,24 @@ def add_label(dataframe, search_results, label):
 def create_summary(dataframe):
     if dataframe is None or dataframe.empty:
         return "No data available."
-    
-    summary = ""
+
+    summary_df = pd.DataFrame(columns=['Label', 'Total'])
+
     for label in dataframe['Label'].unique():
-        if label:  # Skip empty labels
+        if label:
             label_data = dataframe[dataframe['Label'] == label]
-            summary += f"\n\nLabel: {label}\n"
-            summary += label_data[['Description', 'Price', 'Sheet Name']].to_string(index=False)
-            summary += f"\nTotal for {label}: ${label_data['Price'].sum():.2f}\n"
-    
-    return summary
+            new_rows_df = pd.DataFrame([{
+                'Label': label,
+                'Total': round(label_data['Price'].sum(), 2)
+            }])
+            summary_df = pd.concat([summary_df, new_rows_df], ignore_index=True)
+
+    return summary_df
 
 
 def gradio_app():
     with gr.Blocks() as app:
-        gr.Markdown("# Excel Search App")
+        gr.Markdown("# Search and Summarize your Expenses")
         
         dataframe = gr.State(None)
         
@@ -67,33 +70,35 @@ def gradio_app():
                 file_count="multiple", 
                 label="Upload Excel Files",
                 value=[
-                    './dummy_data/expenses_feb.xlsx',
-                    './dummy_data/expenses_jan.xlsx',
-                    './dummy_data/expenses_mar.xlsx',
+                    "./dummy_data/expenses_feb.xlsx",
+                    "./dummy_data/expenses_jan.xlsx",
+                    "./dummy_data/expenses_mar.xlsx",
                 ]
             )
 
-        with gr.Tab("Search using keywords"):
-            search_input = gr.Textbox(label="Search Term")
-            result_table = gr.DataFrame(
-                label="Search Results", 
-                interactive=False
-            )
-            total_output = gr.Textbox(label="Total")
-            label_dropdown = gr.Dropdown(
-                choices=[
-                    'grocery', 
-                    'subscriptions', 
-                    'transportation', 
-                    'outing'
-                ], 
-                label="Select Label"
-            )
-            add_button = gr.Button("Add Label")
-            label_status = gr.Textbox(label="Labeling Status")
-        
-        with gr.Tab("Summary"):
-            summary_output = gr.Textbox(label="Summary", lines=20)
+        with gr.Row():
+            with gr.Column():
+                search_input = gr.Textbox(label="Search Term")
+                result_table = gr.DataFrame(
+                    label="Search Results", 
+                    interactive=False
+                )
+                with gr.Row():
+                    total_output = gr.Textbox(label="Total")
+                    label_dropdown = gr.Dropdown(
+                        choices=[
+                            "Grocery", 
+                            "Subscriptions", 
+                            "Transportation", 
+                            "Outing"
+                        ], 
+                        label="Select Label"
+                    )
+                with gr.Row():
+                    add_button = gr.Button("Add to Summary")
+                    label_status = gr.Textbox(label="Labeling Status")
+            with gr.Column():
+                summary_output = gr.DataFrame(label="Summary")
 
         file_input.change(
             load_excel_files,
@@ -132,4 +137,5 @@ def gradio_app():
     return app
 
 iface = gradio_app()
+iface.title = 'Expenses Tracking App'
 iface.launch(server_port=7860, debug=True)
